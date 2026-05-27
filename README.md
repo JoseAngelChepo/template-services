@@ -1,6 +1,8 @@
 # template-services
 
-NestJS backend template paired with [**template-platform**](../template-platform). Exposes **`/api/v1`** with authentication, sessions, and user management.
+NestJS backend template paired with [**template-platform**](https://github.com/JoseAngelChepo/template-platform). Exposes **`/api/v1`** with authentication, sessions, and user management.
+
+**First time here?** Full local setup (clone both repos, MongoDB on macOS, env vars): [**template-local-setup**](https://github.com/JoseAngelChepo/template-local-setup) Claude Agent Skill.
 
 **Reusable starter for humans and AI agents** — replace secrets, `FRONTEND_URL`, and email branding before production. Do not ship placeholder JWT secrets or a production MongoDB URI from `.env.example` as-is.
 
@@ -24,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Default port: **3001** (`PORT`). The web app expects `http://localhost:3001/api/v1` in dev.
+Default port: **3001** (`PORT`). The web app expects `http://localhost:3001/api/v1` in dev. See the [local setup skill](https://github.com/JoseAngelChepo/template-local-setup) for the full walkthrough.
 
 ## Environment
 
@@ -83,7 +85,8 @@ npm run typecheck        # tsc --noEmit
 | New modules & user ownership | [`docs/MODULES.md`](./docs/MODULES.md) |
 | Auth guards (required, optional, PAT) | [`docs/GUARDS.md`](./docs/GUARDS.md) |
 | Role guard (`@Roles`, admin vs user) | [`docs/role-guard-implementation.md`](./docs/role-guard-implementation.md) |
-| Frontend (sibling repo) | [`../template-platform`](../template-platform) |
+| Local setup (clone, MongoDB, env) | [template-local-setup](https://github.com/JoseAngelChepo/template-local-setup) |
+| Frontend (sibling repo) | [template-platform](https://github.com/JoseAngelChepo/template-platform) |
 
 ---
 
