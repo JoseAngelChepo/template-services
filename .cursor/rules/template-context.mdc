@@ -1,0 +1,45 @@
+---
+description: Template services context
+alwaysApply: true
+---
+
+# template-services — project context
+
+NestJS API paired with **template-platform** (sibling repo). Replace env vars and copy when forking.
+
+## Stack
+
+- NestJS 10, Mongoose, Passport JWT + Google OAuth, class-validator
+- Global prefix: `/api/v1`
+- MongoDB via `MONGODB_URI`
+
+## Modules (template scope)
+
+- **`auth`**: register, login, refresh, logout, Google OAuth, password reset, `GET /auth/me`, user API tokens
+- **`users`**: `GET /users/me`, admin list/get/patch
+- **`sessions`**: refresh-token session store
+- **`emails`**: Resend transactional mail
+- **`user-api-tokens`**: PAT create/list/revoke; `JwtOrUserPatGuard` for JWT or PAT auth
+- **`common`**: `RolesGuard`, shared decorators/pipes
+
+## Auth guards
+
+| Pattern | Guard / decorator |
+|---------|-------------------|
+| Required session | `JwtAuthGuard` |
+| Public + optional session | `OptionalJwtAuthGuard`, `@OptionalUser()` |
+| JWT or PAT (automation) | `JwtOrUserPatGuard` (from `UserApiTokensModule`) |
+| Role check (after auth) | `RolesGuard`, `@Roles()` |
+
+See **`docs/GUARDS.md`** and **`docs/role-guard-implementation.md`**. New feature modules: **`docs/MODULES.md`**. Frontend public routes: **template-platform** `AuthGuard` + `src/proxy.ts`.
+
+## Conventions
+
+- User roles: `user` | `admin` (`UserRole` in `users/schemas/user.schema.ts`)
+- Username: lowercase `a-z`, digits, underscore; validated in `UsernameService`
+- JWT payload: `sub`, `email`, `role`, `accountTier`
+- Google callback redirects to `{FRONTEND_URL}/auth/google/callback` with `token`, `refresh`, `role`, optional `state`
+
+## Platform client
+
+The web app calls this API at `NEXT_PUBLIC_API_URL` (typically `http://localhost:3001/api/v1` in dev). Read **template-platform** for UI routes and `ServicesProvider`.
