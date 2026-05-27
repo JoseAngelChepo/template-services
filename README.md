@@ -4,6 +4,12 @@ NestJS backend template paired with [**template-platform**](https://github.com/J
 
 **First time here?** Full local setup (clone both repos, MongoDB on macOS, env vars): [**template-local-setup**](https://github.com/JoseAngelChepo/template-local-setup) Claude Agent Skill.
 
+**Claude Code** — in your agent’s chat, send:
+
+```text
+set up https://raw.githubusercontent.com/JoseAngelChepo/template-local-setup/main/SKILL.md
+```
+
 **Reusable starter for humans and AI agents** — replace secrets, `FRONTEND_URL`, and email branding before production. Do not ship placeholder JWT secrets or a production MongoDB URI from `.env.example` as-is.
 
 ## Modules
