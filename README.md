@@ -26,8 +26,8 @@ set up https://raw.githubusercontent.com/JoseAngelChepo/template-local-setup/mai
 ## Quick start
 
 ```bash
-cp .env.example .env
-# Edit .env — set JWT secrets and MONGODB_URI (never commit .env)
+npm run setup-env
+# Edit .env — set MONGODB_URI and any optional provider vars (never commit .env)
 npm install
 npm run dev
 ```
@@ -56,7 +56,7 @@ This repo is a **public template**. It ships **no secrets** in source — only p
 
 ### If you clone or fork
 
-1. Copy env: `cp .env.example .env` and generate **new** `JWT_SECRET` / `JWT_REFRESH_SECRET` (do not reuse values from another project).
+1. Create env with fresh secrets: `npm run setup-env` (or `node scripts/setup-env.mjs --force` to regenerate).
 2. Use a **dedicated** MongoDB database for your app (not a shared production cluster).
 3. Keep **`.env`**, **`.env.local`**, and any `*.pem` keys **out of git**. They are listed in [`.gitignore`](./.gitignore).
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -11,6 +11,22 @@ import { UsersModule } from '../users/users.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { EmailsModule } from '../emails/emails.module';
 import { UserApiTokensModule } from '../user-api-tokens/user-api-tokens.module';
+import { IntegrationsModule } from '../integrations/integrations.module';
+import { GoogleOAuthIntegration } from '../integrations/google-oauth.integration';
+
+const googleStrategyProvider: Provider = {
+  provide: GoogleStrategy,
+  useFactory: (
+    config: ConfigService,
+    googleOAuth: GoogleOAuthIntegration,
+  ): GoogleStrategy | null => {
+    if (!googleOAuth.isConfigured()) {
+      return null;
+    }
+    return new GoogleStrategy(config, googleOAuth);
+  },
+  inject: [ConfigService, GoogleOAuthIntegration],
+};
 
 @Module({
   imports: [
@@ -18,6 +34,7 @@ import { UserApiTokensModule } from '../user-api-tokens/user-api-tokens.module';
     SessionsModule,
     EmailsModule,
     UserApiTokensModule,
+    IntegrationsModule,
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -30,7 +47,7 @@ import { UserApiTokensModule } from '../user-api-tokens/user-api-tokens.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy],
+  providers: [AuthService, JwtStrategy, googleStrategyProvider],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

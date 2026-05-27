@@ -3,19 +3,17 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
+import { GoogleOAuthIntegration } from '../../integrations/google-oauth.integration';
 
 @Injectable()
 export class GoogleAuthGuard extends AuthGuard('google') {
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly googleOAuth: GoogleOAuthIntegration) {
     super();
   }
 
   override canActivate(context: ExecutionContext) {
-    const id = this.configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
-    const secret = this.configService.get<string>('GOOGLE_CLIENT_SECRET')?.trim();
-    if (!id || !secret) {
+    if (!this.googleOAuth.isConfigured()) {
       throw new ServiceUnavailableException(
         'Google sign-in is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
       );

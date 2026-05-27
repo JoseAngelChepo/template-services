@@ -1,22 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
+import type { OptionalIntegration } from '../../common/integrations/optional-integration.interface';
 import type { SendEmailOptions, SendEmailResult } from '../types/email-send.types';
 
 @Injectable()
-export class ResendService {
+export class ResendService implements OptionalIntegration {
+  readonly integrationId = 'resend';
   private readonly logger = new Logger(ResendService.name);
-  private readonly client: Resend;
+  private readonly client: Resend | null;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY');
-    this.client = new Resend(apiKey ?? undefined);
+    const apiKey = this.configService.get<string>('RESEND_API_KEY')?.trim();
 
-    if (!apiKey?.trim()) {
+    if (!apiKey) {
+      this.client = null;
       this.logger.warn(
-        'RESEND_API_KEY not configured. Outbound email via Resend will fail.',
+        'RESEND_API_KEY not configured. Outbound email via Resend is disabled.',
       );
     } else {
+      this.client = new Resend(apiKey);
       this.logger.log('Resend service initialized');
     }
   }
@@ -63,6 +66,14 @@ export class ResendService {
           success: false,
           error:
             'Missing sender: set EMAIL_FROM or RESEND_FROM_EMAIL (and optionally RESEND_FROM_NAME).',
+        };
+      }
+
+      if (!this.client) {
+        return {
+          success: false,
+          error:
+            'Resend is not configured: set RESEND_API_KEY and sender config (EMAIL_FROM or RESEND_FROM_EMAIL).',
         };
       }
 

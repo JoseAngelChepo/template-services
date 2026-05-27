@@ -8,9 +8,14 @@ All routes are under **`/api/v1`**.
 
 | Topic | File |
 |-------|------|
+| **Optional integrations (Resend, OAuth, …)** | [`INTEGRATIONS.md`](./INTEGRATIONS.md) |
 | **New modules & linking to users** | [`MODULES.md`](./MODULES.md) |
 | Auth guards (required, optional, PAT) | [`GUARDS.md`](./GUARDS.md) |
 | Role guard (`@Roles`, admin vs user) | [`role-guard-implementation.md`](./role-guard-implementation.md) |
+
+## Health (public)
+
+- `GET /health` — app + MongoDB status and optional integration flags (`google-oauth`, `resend`)
 
 ## Auth (public)
 
