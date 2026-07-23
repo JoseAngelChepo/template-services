@@ -9,9 +9,11 @@ import {
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
+import { decode } from 'jsonwebtoken';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -28,6 +30,69 @@ import { UserApiTokensService } from '../user-api-tokens/user-api-tokens.service
 import { CreateUserApiTokenDto } from '../user-api-tokens/dto/create-user-api-token.dto';
 import { UsernameService } from '../users/username.service';
 import { UsernameAvailabilityQueryDto } from './dto/username-availability-query.dto';
+import { getCookieValue } from '../common/http/cookies';
+import type { AuthResponse } from './interfaces/auth-response.interface';
+
+const AUTH_COOKIE_NAMES = {
+  accessToken: 'access_token',
+  refreshToken: 'refresh_token',
+} as const;
+
+function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
+function authCookieOptions(expires: Date): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: 'lax',
+    path: '/',
+    expires,
+  };
+}
+
+function getJwtExpiryDate(token: string): Date | undefined {
+  const decoded = decode(token) as { exp?: number } | null;
+  if (!decoded?.exp) {
+    return undefined;
+  }
+  return new Date(decoded.exp * 1000);
+}
+
+function setAuthCookies(
+  res: Response,
+  authResponse: Pick<AuthResponse, 'access_token' | 'refresh_token'>,
+): void {
+  const accessExpires = getJwtExpiryDate(authResponse.access_token);
+  const refreshExpires = getJwtExpiryDate(authResponse.refresh_token);
+
+  if (accessExpires) {
+    res.cookie(AUTH_COOKIE_NAMES.accessToken, authResponse.access_token, authCookieOptions(accessExpires));
+  }
+  if (refreshExpires) {
+    res.cookie(AUTH_COOKIE_NAMES.refreshToken, authResponse.refresh_token, authCookieOptions(refreshExpires));
+  }
+}
+
+function clearAuthCookies(res: Response): void {
+  const clearOptions = {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: 'lax' as const,
+    path: '/',
+  };
+
+  res.clearCookie(AUTH_COOKIE_NAMES.accessToken, clearOptions);
+  res.clearCookie(AUTH_COOKIE_NAMES.refreshToken, clearOptions);
+}
+
+function readRefreshToken(
+  req: Request,
+  body?: RefreshTokenDto,
+): string | undefined {
+  return body?.refresh_token ?? getCookieValue(req.headers.cookie, AUTH_COOKIE_NAMES.refreshToken);
+}
 
 @Controller('auth')
 export class AuthController {
@@ -38,8 +103,10 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const authResponse = await this.authService.register(registerDto);
+    setAuthCookies(res, authResponse);
+    return { user: authResponse.user };
   }
 
   /** Validate username format and whether it is still available (public; for sign-up UI). */
@@ -49,28 +116,50 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const authResponse = await this.authService.login(loginDto);
+    setAuthCookies(res, authResponse);
+    return { user: authResponse.user };
   }
 
   @Post('refresh')
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshToken(refreshTokenDto);
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = readRefreshToken(req, refreshTokenDto);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const authResponse = await this.authService.refreshToken(refreshToken);
+    setAuthCookies(res, authResponse);
+    return { user: authResponse.user };
   }
 
   @Post('logout')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  async logout(@Req() req: RequestWithUser, @Body() body: RefreshTokenDto) {
-    await this.authService.logout(req.user.sub, body.refresh_token);
+  async logout(
+    @Req() req: RequestWithUser,
+    @Body() body: RefreshTokenDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken = readRefreshToken(req, body);
+    if (refreshToken) {
+      await this.authService.logout(req.user.sub, refreshToken);
+    }
+    clearAuthCookies(res);
     return { message: 'Logged out successfully' };
   }
 
   @Post('logout-all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  async logoutAll(@Req() req: RequestWithUser) {
+  async logoutAll(@Req() req: RequestWithUser, @Res({ passthrough: true }) res: Response) {
     await this.authService.logoutAll(req.user.sub);
+    clearAuthCookies(res);
     return { message: 'Logged out from all devices successfully' };
   }
 
@@ -101,14 +190,9 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     const authResponse = await this.authService.googleLogin(req.user as Record<string, unknown>);
+    setAuthCookies(res, authResponse);
 
-    const params = new URLSearchParams({
-      token: authResponse.access_token,
-      refresh: authResponse.refresh_token,
-      role: authResponse.user.role,
-      username: authResponse.user.username,
-    });
-
+    const params = new URLSearchParams();
     const rawState = req.query?.state;
     const state = Array.isArray(rawState) ? rawState[0] : rawState;
     if (typeof state === 'string' && state.length > 0) {
@@ -116,7 +200,10 @@ export class AuthController {
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const redirectUrl = `${frontendUrl}/auth/google/callback?${params.toString()}`;
+    const query = params.toString();
+    const redirectUrl = query
+      ? `${frontendUrl}/auth/google/callback?${query}`
+      : `${frontendUrl}/auth/google/callback`;
 
     return res.status(HttpStatus.FOUND).redirect(redirectUrl);
   }

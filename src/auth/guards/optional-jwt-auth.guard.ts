@@ -1,6 +1,7 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ExtractJwt } from 'passport-jwt';
+import { getCookieValue } from '../../common/http/cookies';
 
 /**
  * Optional session for public routes: sets `request.user` when a valid Bearer JWT is present;
@@ -10,9 +11,12 @@ import { ExtractJwt } from 'passport-jwt';
 @Injectable()
 export class OptionalJwtAuthGuard extends AuthGuard('jwt') {
   override async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest<{ headers?: { authorization?: string } }>();
-    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
-    if (!token) {
+    const req = context.switchToHttp().getRequest<{
+      headers?: { authorization?: string; cookie?: string };
+    }>();
+    const bearerToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    const cookieToken = getCookieValue(req.headers?.cookie, 'access_token');
+    if (!bearerToken && !cookieToken) {
       return true;
     }
     try {

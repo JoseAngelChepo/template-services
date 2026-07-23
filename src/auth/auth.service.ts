@@ -160,15 +160,13 @@ export class AuthService {
     };
   }
 
-  async refreshToken(refreshTokenDto: RefreshTokenDto): Promise<AuthResponse> {
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
     try {
-      this.jwtService.verify(refreshTokenDto.refresh_token, {
+      this.jwtService.verify(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
 
-      const session = await this.sessionsService.findByRefreshToken(
-        refreshTokenDto.refresh_token,
-      );
+      const session = await this.sessionsService.findByRefreshToken(refreshToken);
       if (!session) {
         throw new UnauthorizedException('Invalid refresh token');
       }
@@ -176,7 +174,7 @@ export class AuthService {
       const userId = String(session.userId);
       const user = await this.usersService.findActiveById(userId);
       if (!user || !user.isActive) {
-        await this.sessionsService.deleteByRefreshToken(refreshTokenDto.refresh_token);
+        await this.sessionsService.deleteByRefreshToken(refreshToken);
         throw new UnauthorizedException('Invalid refresh token');
       }
 
