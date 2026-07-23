@@ -24,6 +24,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { UserRole } from '../users/schemas/user.schema';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { RequestWithUser } from './interfaces/request-with-user.interface';
@@ -105,6 +106,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @RateLimit({ limit: 5, windowMs: 60 * 60 * 1000 })
   async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const authResponse = await this.authService.register(registerDto);
     setAuthCookies(res, authResponse);
@@ -119,6 +121,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @RateLimit({ limit: 10, windowMs: 15 * 60 * 1000 })
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const authResponse = await this.authService.login(loginDto);
     setAuthCookies(res, authResponse);
@@ -127,6 +130,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @RateLimit({ limit: 30, windowMs: 15 * 60 * 1000 })
   @UseGuards(CsrfGuard)
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
@@ -145,6 +149,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @RateLimit({ limit: 15, windowMs: 15 * 60 * 1000 })
   @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async logout(
@@ -162,6 +167,7 @@ export class AuthController {
   }
 
   @Post('logout-all')
+  @RateLimit({ limit: 5, windowMs: 15 * 60 * 1000 })
   @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async logoutAll(@Req() req: RequestWithUser, @Res({ passthrough: true }) res: Response) {
@@ -179,22 +185,26 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @RateLimit({ limit: 3, windowMs: 60 * 60 * 1000 })
   async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
     return this.authService.requestPasswordReset(dto);
   }
 
   @Post('reset-password')
+  @RateLimit({ limit: 5, windowMs: 60 * 60 * 1000 })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
   }
 
   @Get('google')
+  @RateLimit({ limit: 20, windowMs: 15 * 60 * 1000 })
   @UseGuards(GoogleAuthGuard)
   async googleAuth() {
     return;
   }
 
   @Get('google/callback')
+  @RateLimit({ limit: 20, windowMs: 15 * 60 * 1000 })
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     const authResponse = await this.authService.googleLogin(req.user as Record<string, unknown>);
@@ -219,6 +229,7 @@ export class AuthController {
 
   /** Create a per-user API token (for agents / automation). Raw token is returned once. JWT only. */
   @Post('api-tokens')
+  @RateLimit({ limit: 10, windowMs: 60 * 60 * 1000 })
   @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async createApiToken(
@@ -236,6 +247,7 @@ export class AuthController {
   }
 
   @Delete('api-tokens/:id')
+  @RateLimit({ limit: 20, windowMs: 60 * 60 * 1000 })
   @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async revokeApiToken(@Req() req: RequestWithUser, @Param('id') id: string) {

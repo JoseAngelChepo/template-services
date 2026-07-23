@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CsrfGuard } from '../common/guards/csrf.guard';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { UserRole } from './schemas/user.schema';
@@ -51,6 +52,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @RateLimit({ limit: 30, windowMs: 15 * 60 * 1000 })
   @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async adminPatch(
