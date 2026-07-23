@@ -13,11 +13,13 @@ export class SessionsService {
     userId: string,
     refreshToken: string,
     type: SessionType,
+    expiresAt: Date,
   ): Promise<SessionDocument> {
     const session = new this.sessionModel({
       userId: new Types.ObjectId(userId),
       refreshToken,
       type,
+      expiresAt,
       lastUsed: new Date(),
     });
     return session.save();

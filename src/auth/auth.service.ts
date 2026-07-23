@@ -50,6 +50,17 @@ export class AuthService {
     };
   }
 
+  private getSessionExpiresAt(): Date {
+    const rawDays = this.configService.get<string>('SESSION_MAX_AGE_DAYS', '30');
+    const days = Number.parseInt(rawDays ?? '30', 10);
+    const safeDays = Number.isFinite(days) && days > 0 ? days : 30;
+    return new Date(Date.now() + safeDays * 24 * 60 * 60 * 1000);
+  }
+
+  private isSessionExpired(expiresAt: Date): boolean {
+    return expiresAt.getTime() <= Date.now();
+  }
+
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
     try {
       const username = await this.usernameService.assertAvailableForSignup(registerDto.username);
@@ -63,7 +74,12 @@ export class AuthService {
       });
 
       const tokens = await this.generateTokens(user);
-      await this.sessionsService.create(user.id, tokens.refresh_token, SessionType.BROWSER);
+      await this.sessionsService.create(
+        user.id,
+        tokens.refresh_token,
+        SessionType.BROWSER,
+        this.getSessionExpiresAt(),
+      );
 
       return {
         ...tokens,
@@ -88,7 +104,12 @@ export class AuthService {
     await this.usersService.updateLastLogin(userDocument.id);
 
     const tokens = await this.generateTokens(userDocument);
-    await this.sessionsService.create(userDocument.id, tokens.refresh_token, SessionType.BROWSER);
+    await this.sessionsService.create(
+      userDocument.id,
+      tokens.refresh_token,
+      SessionType.BROWSER,
+      this.getSessionExpiresAt(),
+    );
 
     return {
       ...tokens,
@@ -152,7 +173,12 @@ export class AuthService {
 
     await this.usersService.updateLastLogin(existingUser.id);
     const tokens = await this.generateTokens(existingUser);
-    await this.sessionsService.create(existingUser.id, tokens.refresh_token, SessionType.BROWSER);
+    await this.sessionsService.create(
+      existingUser.id,
+      tokens.refresh_token,
+      SessionType.BROWSER,
+      this.getSessionExpiresAt(),
+    );
 
     return {
       ...tokens,
@@ -168,6 +194,11 @@ export class AuthService {
 
       const session = await this.sessionsService.findByRefreshToken(refreshToken);
       if (!session) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      if (this.isSessionExpired(session.expiresAt)) {
+        await this.sessionsService.deleteByRefreshToken(refreshToken);
         throw new UnauthorizedException('Invalid refresh token');
       }
 
@@ -250,6 +281,7 @@ export class AuthService {
     }
 
     await this.usersService.updatePassword(user.id, resetPasswordDto.password);
+    await this.sessionsService.deleteAllByUserId(user.id);
 
     const { html: emailHtml, text: emailText } = this.buildPasswordResetConfirmationEmail({
       firstName: user.firstName ?? 'there',
