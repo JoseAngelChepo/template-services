@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { UserRole } from './schemas/user.schema';
@@ -50,7 +51,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async adminPatch(
     @Param('id', ParseObjectIdPipe) id: Types.ObjectId,

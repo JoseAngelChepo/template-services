@@ -23,6 +23,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { CsrfGuard } from '../common/guards/csrf.guard';
 import { UserRole } from '../users/schemas/user.schema';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { RequestWithUser } from './interfaces/request-with-user.interface';
@@ -31,6 +32,7 @@ import { CreateUserApiTokenDto } from '../user-api-tokens/dto/create-user-api-to
 import { UsernameService } from '../users/username.service';
 import { UsernameAvailabilityQueryDto } from './dto/username-availability-query.dto';
 import { getCookieValue } from '../common/http/cookies';
+import { setCsrfCookie, clearCsrfCookie } from '../common/http/csrf';
 import type { AuthResponse } from './interfaces/auth-response.interface';
 
 const AUTH_COOKIE_NAMES = {
@@ -106,6 +108,7 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const authResponse = await this.authService.register(registerDto);
     setAuthCookies(res, authResponse);
+    setCsrfCookie(res);
     return { user: authResponse.user };
   }
 
@@ -119,10 +122,12 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const authResponse = await this.authService.login(loginDto);
     setAuthCookies(res, authResponse);
+    setCsrfCookie(res);
     return { user: authResponse.user };
   }
 
   @Post('refresh')
+  @UseGuards(CsrfGuard)
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
     @Req() req: Request,
@@ -135,11 +140,12 @@ export class AuthController {
 
     const authResponse = await this.authService.refreshToken(refreshToken);
     setAuthCookies(res, authResponse);
+    setCsrfCookie(res);
     return { user: authResponse.user };
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async logout(
     @Req() req: RequestWithUser,
@@ -151,15 +157,17 @@ export class AuthController {
       await this.authService.logout(req.user.sub, refreshToken);
     }
     clearAuthCookies(res);
+    clearCsrfCookie(res);
     return { message: 'Logged out successfully' };
   }
 
   @Post('logout-all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async logoutAll(@Req() req: RequestWithUser, @Res({ passthrough: true }) res: Response) {
     await this.authService.logoutAll(req.user.sub);
     clearAuthCookies(res);
+    clearCsrfCookie(res);
     return { message: 'Logged out from all devices successfully' };
   }
 
@@ -191,6 +199,7 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
     const authResponse = await this.authService.googleLogin(req.user as Record<string, unknown>);
     setAuthCookies(res, authResponse);
+    setCsrfCookie(res);
 
     const params = new URLSearchParams();
     const rawState = req.query?.state;
@@ -210,7 +219,7 @@ export class AuthController {
 
   /** Create a per-user API token (for agents / automation). Raw token is returned once. JWT only. */
   @Post('api-tokens')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async createApiToken(
     @Req() req: RequestWithUser,
@@ -227,7 +236,7 @@ export class AuthController {
   }
 
   @Delete('api-tokens/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CsrfGuard, JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
   async revokeApiToken(@Req() req: RequestWithUser, @Param('id') id: string) {
     await this.userApiTokensService.revoke(req.user.sub, id);
