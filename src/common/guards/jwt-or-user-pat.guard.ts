@@ -10,6 +10,7 @@ import { Request } from 'express';
 import { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 import { UserApiTokensService } from '../../user-api-tokens/user-api-tokens.service';
 import { AccountTier } from '../../users/schemas/user.schema';
+import { getCookieValue } from '../http/cookies';
 
 /**
  * Accepts either a normal user JWT (`Authorization: Bearer <jwt>`)
@@ -29,12 +30,15 @@ export class JwtOrUserPatGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: JwtPayload }>();
     const authHeader = request.headers['authorization'];
+    const cookieToken = getCookieValue(request.headers.cookie, 'access_token');
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ') && !cookieToken) {
       throw new UnauthorizedException('Missing bearer token');
     }
 
-    const token = authHeader.slice(7).trim();
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : cookieToken?.trim() ?? '';
     if (!token) {
       throw new UnauthorizedException('Missing bearer token');
     }

@@ -18,6 +18,9 @@ export class Session {
   @Prop({ required: true })
   refreshToken: string;
 
+  @Prop({ required: true })
+  expiresAt: Date;
+
   @Prop({ default: Date.now })
   lastUsed: Date;
 }
@@ -26,3 +29,4 @@ export const SessionSchema = SchemaFactory.createForClass(Session);
 
 SessionSchema.index({ refreshToken: 1 }, { unique: true });
 SessionSchema.index({ userId: 1 });
+SessionSchema.index({ expiresAt: 1 });
