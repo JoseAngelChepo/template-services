@@ -22,11 +22,11 @@
     "@nestjs/mapped-types": "^2.1.1",
     "@nestjs/mongoose": "^11.0.4",
     "@nestjs/passport": "^11.0.5",
-    "@nestjs/platform-express": "^11.1.24",
-    "bcrypt": "^5.1.1",
+    "@nestjs/platform-express": "^11.1.28",
+    "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
-    "mongoose": "^8.24.0",
+    "mongoose": "8.24.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
@@ -47,9 +47,10 @@
     "typescript": "^5.4.0"
   },
   "overrides": {
+    "brace-expansion": "^5.0.8",
     "glob": "^10.5.0",
-    "multer": "^2.1.1",
-    "tar": "^7.5.10",
+    "multer": "^2.2.0",
+    "tar": "^7.5.22",
     "tmp": "^0.2.6"
   }
 }
