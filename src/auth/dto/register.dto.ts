@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import {
   USERNAME_MAX_LEN,
   USERNAME_MIN_LEN,
@@ -14,7 +14,13 @@ export class RegisterDto {
   @MinLength(8)
   password: string;
 
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  /** Optional; when omitted the API generates a unique handle from the email. */
+  @Transform(({ value }) => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toLowerCase();
+    return normalized.length ? normalized : undefined;
+  })
+  @IsOptional()
   @IsString()
   @MinLength(USERNAME_MIN_LEN)
   @MaxLength(USERNAME_MAX_LEN)
@@ -22,7 +28,7 @@ export class RegisterDto {
     message:
       'Username must use only lowercase letters, digits, and underscores (3–30 characters)',
   })
-  username: string;
+  username?: string;
 
   @IsString()
   @MinLength(1)

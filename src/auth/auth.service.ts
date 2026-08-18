@@ -20,7 +20,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
-import { AuthResponse } from './interfaces/auth-response.interface';
+import { AuthResponse, RegisterResponse } from './interfaces/auth-response.interface';
 import {
   escapeHtmlForEmail,
   renderTransactionalEmailLayout,
@@ -61,9 +61,11 @@ export class AuthService {
     return expiresAt.getTime() <= Date.now();
   }
 
-  async register(registerDto: RegisterDto): Promise<AuthResponse> {
+  async register(registerDto: RegisterDto): Promise<RegisterResponse> {
     try {
-      const username = await this.usernameService.assertAvailableForSignup(registerDto.username);
+      const username = registerDto.username
+        ? await this.usernameService.assertAvailableForSignup(registerDto.username)
+        : await this.usernameService.generateUniqueFromEmail(registerDto.email);
       const user = await this.usersService.create({
         email: registerDto.email.toLowerCase().trim(),
         username,
@@ -73,17 +75,12 @@ export class AuthService {
         authProvider: AuthProvider.LOCAL,
       });
 
-      const tokens = await this.generateTokens(user);
-      await this.sessionsService.create(
-        user.id,
-        tokens.refresh_token,
-        SessionType.BROWSER,
-        this.getSessionExpiresAt(),
-      );
-
+      // Accounts are created inactive (isActive=false). We deliberately do NOT
+      // issue tokens/session here so a pending user cannot enter the platform
+      // until an admin activates the account.
       return {
-        ...tokens,
         user: this.buildAuthUser(user),
+        pending: true,
       };
     } catch (error) {
       if (error instanceof ConflictException) throw error;
@@ -99,6 +96,10 @@ export class AuthService {
       !(await this.usersService.validatePassword(userDocument, loginDto.password))
     ) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!userDocument.isActive) {
+      throw new UnauthorizedException('Your account is pending approval');
     }
 
     await this.usersService.updateLastLogin(userDocument.id);
@@ -169,6 +170,10 @@ export class AuthService {
           isEmailVerified: true,
         });
       }
+    }
+
+    if (!existingUser.isActive) {
+      throw new UnauthorizedException('Your account is pending approval');
     }
 
     await this.usersService.updateLastLogin(existingUser.id);

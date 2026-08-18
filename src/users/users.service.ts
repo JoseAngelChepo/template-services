@@ -65,6 +65,8 @@ export class UsersService {
       avatar: dto.avatar,
       googleId: dto.googleId,
       isEmailVerified: dto.isEmailVerified,
+      // New self-registered accounts start inactive (pending admin approval).
+      isActive: dto.isActive ?? false,
     });
     return user.save();
   }

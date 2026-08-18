@@ -107,11 +107,11 @@ export class AuthController {
 
   @Post('register')
   @RateLimit({ limit: 5, windowMs: 60 * 60 * 1000 })
-  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-    const authResponse = await this.authService.register(registerDto);
-    setAuthCookies(res, authResponse);
-    setCsrfCookie(res);
-    return { user: authResponse.user };
+  async register(@Body() registerDto: RegisterDto) {
+    const result = await this.authService.register(registerDto);
+    // No auth cookies are set: the account is inactive (pending approval), so
+    // the user cannot enter the platform until an admin activates it.
+    return { user: result.user, pending: result.pending };
   }
 
   /** Validate username format and whether it is still available (public; for sign-up UI). */
@@ -207,24 +207,39 @@ export class AuthController {
   @RateLimit({ limit: 20, windowMs: 15 * 60 * 1000 })
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const authResponse = await this.authService.googleLogin(req.user as Record<string, unknown>);
-    setAuthCookies(res, authResponse);
-    setCsrfCookie(res);
-
-    const params = new URLSearchParams();
-    const rawState = req.query?.state;
-    const state = Array.isArray(rawState) ? rawState[0] : rawState;
-    if (typeof state === 'string' && state.length > 0) {
-      params.set('state', state);
-    }
-
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const query = params.toString();
-    const redirectUrl = query
-      ? `${frontendUrl}/auth/google/callback?${query}`
-      : `${frontendUrl}/auth/google/callback`;
 
-    return res.status(HttpStatus.FOUND).redirect(redirectUrl);
+    try {
+      const authResponse = await this.authService.googleLogin(
+        req.user as Record<string, unknown>,
+      );
+      setAuthCookies(res, authResponse);
+      setCsrfCookie(res);
+
+      const params = new URLSearchParams();
+      const rawState = req.query?.state;
+      const state = Array.isArray(rawState) ? rawState[0] : rawState;
+      if (typeof state === 'string' && state.length > 0) {
+        params.set('state', state);
+      }
+
+      const query = params.toString();
+      const redirectUrl = query
+        ? `${frontendUrl}/auth/google/callback?${query}`
+        : `${frontendUrl}/auth/google/callback`;
+
+      return res.status(HttpStatus.FOUND).redirect(redirectUrl);
+    } catch (error) {
+      // New Google accounts are created inactive; route pending users back to
+      // sign-in with a flag instead of granting platform access.
+      if (error instanceof UnauthorizedException) {
+        const params = new URLSearchParams({ pending: '1' });
+        return res
+          .status(HttpStatus.FOUND)
+          .redirect(`${frontendUrl}/sign-in?${params.toString()}`);
+      }
+      throw error;
+    }
   }
 
   /** Create a per-user API token (for agents / automation). Raw token is returned once. JWT only. */
