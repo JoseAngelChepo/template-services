@@ -23,7 +23,7 @@ export class HealthService {
 
     return {
       status: databaseStatus === 'up' ? 'ok' : 'degraded',
-      app: 'template-services',
+      app: 'kolyma-services',
       timestamp: new Date().toISOString(),
       database: { status: databaseStatus },
       integrations: this.integrations.listStatus(),

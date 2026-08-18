@@ -25,7 +25,7 @@ export function renderTransactionalEmailLayout(
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>App</title>
+  <title>Kolyma</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f5f3;font-family:'Courier New',monospace;">
 
@@ -42,7 +42,7 @@ export function renderTransactionalEmailLayout(
                     <div style="width:6px;height:6px;border-radius:50%;background:#6b8cae;"></div>
                   </td>
                   <td style="font-family:'Courier New',monospace;font-size:11px;color:#a0a09a;letter-spacing:0.16em;text-transform:uppercase;vertical-align:middle;">
-                    App
+                    Kolyma
                   </td>
                 </tr>
               </table>
@@ -74,7 +74,7 @@ export function renderTransactionalEmailLayout(
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td style="font-family:'Courier New',monospace;font-size:9px;color:#c0c0ba;text-transform:uppercase;letter-spacing:0.12em;">
-                    App &copy; 2026
+                    Kolyma &copy; 2026
                   </td>
                   <td align="right">
                     <span style="font-family:'Courier New',monospace;font-size:9px;color:#c0c0ba;letter-spacing:0.1em;text-transform:uppercase;margin-left:20px;">

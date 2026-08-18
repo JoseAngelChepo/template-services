@@ -1,7 +1,7 @@
 {
-  "name": "template-services",
+  "name": "kolyma-services",
   "version": "0.1.0",
-  "description": "NestJS API template (auth + users)",
+  "description": "Kolyma services API",
   "private": true,
   "scripts": {
     "build": "nest build",
